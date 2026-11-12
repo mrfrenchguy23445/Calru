@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('Calru money parsing', () {
     test('parses decimal amounts without binary floating point', () {
-      expect(money('0.10') + money('0.20'), DecimalTestMatcher('0.30'));
+      final result = money('0.10') + money('0.20');
+      expect(result.toStringAsFixed(2), '0.30');
     });
 
     test('parses comma grouped amounts', () {
@@ -41,17 +42,4 @@ void main() {
       expect(entry.margin.toString(), '0');
     });
   });
-}
-
-class DecimalTestMatcher extends Matcher {
-  DecimalTestMatcher(this.expected);
-  final String expected;
-
-  @override
-  Description describe(Description description) =>
-      description.add('Decimal equal to $expected');
-
-  @override
-  bool matches(dynamic item, Map matchState) =>
-      item.toStringAsFixed(2) == expected;
 }
