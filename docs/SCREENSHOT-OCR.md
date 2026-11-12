@@ -2,7 +2,8 @@
 
 Calru supports a review-first screenshot workflow.
 
-- Android and iOS: Google ML Kit text recognition.
+- Android: Google ML Kit text recognition (Android API 21 or newer).
+- iOS: Google ML Kit Latin text recognition (iOS 15.5 or newer; the bootstrap script configures the deployment target).
 - Linux, Windows and macOS: Tesseract OCR through the local `tesseract` executable.
 - Every detected amount remains editable.
 - OCR output is never saved as a financial record until the user confirms it.
