@@ -110,10 +110,10 @@ class Entry {
 
   factory Entry.fromJson(Map<String, dynamic> json) => Entry(
         label: json['label'] as String? ?? 'Untitled',
-        revenue: money(json['revenue'] as String? ?? '0'),
-        cogs: money(json['cogs'] as String? ?? '0'),
-        expenses: money(json['expenses'] as String? ?? '0'),
-        taxRate: money(json['taxRate'] as String? ?? '0'),
+        revenue: money(json['revenue']?.toString() ?? '0'),
+        cogs: money(json['cogs']?.toString() ?? '0'),
+        expenses: money(json['expenses']?.toString() ?? '0'),
+        taxRate: money(json['taxRate']?.toString() ?? '0'),
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
       );
 }
@@ -175,6 +175,81 @@ class _HomePageState extends State<HomePage> {
   Future<void> addEntry(Entry entry) async {
     setState(() => entries.insert(0, entry));
     await saveEntries();
+  }
+
+  Future<void> editEntry(Entry entry) async {
+    final name = TextEditingController(text: entry.label);
+    final revenue = TextEditingController(text: entry.revenue.toString());
+    final cogs = TextEditingController(text: entry.cogs.toString());
+    final expenses = TextEditingController(text: entry.expenses.toString());
+    final tax = TextEditingController(text: entry.taxRate.toString());
+    String? error;
+    final edited = await showDialog<Entry>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, refresh) => AlertDialog(
+          title: const Text('Edit financial record'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: name, decoration: const InputDecoration(labelText: 'Record name')),
+                TextField(controller: revenue, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Revenue')),
+                TextField(controller: cogs, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Cost of goods sold')),
+                TextField(controller: expenses, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Other expenses')),
+                TextField(controller: tax, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Tax rate (%)')),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(error!, style: const TextStyle(color: Color(0xFFE18A8A))),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final values = [revenue.text, cogs.text, expenses.text, tax.text];
+                if (!values.every(isValidMoneyInput) ||
+                    money(revenue.text) <= Decimal.zero ||
+                    money(cogs.text) < Decimal.zero ||
+                    money(expenses.text) < Decimal.zero ||
+                    money(tax.text) < Decimal.zero ||
+                    money(tax.text) > Decimal.fromInt(100)) {
+                  refresh(() => error = 'Enter valid amounts and a tax rate from 0 to 100%.');
+                  return;
+                }
+                Navigator.pop(
+                  dialogContext,
+                  Entry(
+                    label: name.text.trim().isEmpty ? 'Untitled' : name.text.trim(),
+                    revenue: money(revenue.text),
+                    cogs: money(cogs.text),
+                    expenses: money(expenses.text),
+                    taxRate: money(tax.text),
+                    createdAt: entry.createdAt,
+                  ),
+                );
+              },
+              child: const Text('Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+    name.dispose();
+    revenue.dispose();
+    cogs.dispose();
+    expenses.dispose();
+    tax.dispose();
+    if (edited == null || !mounted) return;
+    final index = entries.indexOf(entry);
+    if (index < 0) return;
+    setState(() => entries[index] = edited);
+    await saveEntries();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record updated.')));
   }
 
   Future<void> deleteEntry(Entry entry) async {
@@ -251,9 +326,15 @@ class _HomePageState extends State<HomePage> {
       if (rawRecords is! List) {
         throw const FormatException('This is not a Calru records backup.');
       }
-      final imported = rawRecords
-          .map((item) => Entry.fromJson(Map<String, dynamic>.from(item as Map)))
-          .toList();
+      final imported = rawRecords.map((item) {
+        final record = Map<String, dynamic>.from(item as Map);
+        for (final key in ['revenue', 'cogs', 'expenses', 'taxRate']) {
+          if (!isValidMoneyInput(record[key]?.toString() ?? '0')) {
+            throw FormatException('Invalid $key value in backup.');
+          }
+        }
+        return Entry.fromJson(record);
+      }).toList();
       if (!mounted) return;
       final choice = await showDialog<String>(
         context: context,
@@ -438,7 +519,7 @@ class _HomePageState extends State<HomePage> {
         TextButton(onPressed: () => setState(() => page = 3), child: const Text('View history')),
       ]),
       if (entries.isEmpty) const EmptyState(text: 'No financial records yet. Add a calculation to start tracking.'),
-      ...entries.take(4).map((entry) => EntryTile(entry: entry, symbol: symbol, onDelete: () => deleteEntry(entry))),
+      ...entries.take(4).map((entry) => EntryTile(entry: entry, symbol: symbol, onEdit: () => editEntry(entry), onDelete: () => deleteEntry(entry))),
     ],
   ));
 
@@ -461,6 +542,7 @@ class _HomePageState extends State<HomePage> {
       ...filtered.map((entry) => EntryTile(
             entry: entry,
             symbol: symbol,
+            onEdit: () => editEntry(entry),
             onDelete: () => deleteEntry(entry),
           )),
     ]));
@@ -513,9 +595,10 @@ class EmptyState extends StatelessWidget {
 }
 
 class EntryTile extends StatelessWidget {
-  const EntryTile({super.key, required this.entry, required this.symbol, this.onDelete});
+  const EntryTile({super.key, required this.entry, required this.symbol, this.onEdit, this.onDelete});
   final Entry entry;
   final String symbol;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   @override
   Widget build(BuildContext context) => Container(
@@ -532,6 +615,12 @@ class EntryTile extends StatelessWidget {
         Text('$symbol${amount(entry.grossProfit)}', style: const TextStyle(fontWeight: FontWeight.w700, color: green)),
         Text('Revenue $symbol${amount(entry.revenue)}', style: const TextStyle(color: muted, fontSize: 11)),
       ]),
+      if (onEdit != null)
+        IconButton(
+          tooltip: 'Edit record',
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_outlined, color: muted),
+        ),
       if (onDelete != null)
         IconButton(
           tooltip: 'Delete record',
@@ -757,7 +846,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     input('Cost of goods sold', cogs),
     input('Other expenses', expenses),
     const SizedBox(height: 12),
-    FilledButton.icon(onPressed: money(revenue.text) <= Decimal.zero || money(cogs.text) < Decimal.zero || money(expenses.text) < Decimal.zero ? null : () async {
+    FilledButton.icon(onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || money(revenue.text) <= Decimal.zero || money(cogs.text) < Decimal.zero || money(expenses.text) < Decimal.zero ? null : () async {
       await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Screenshot import' : label.text.trim(), revenue: money(revenue.text), cogs: money(cogs.text), expenses: money(expenses.text), createdAt: DateTime.now()));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reviewed screenshot figures saved.')));
