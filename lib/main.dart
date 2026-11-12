@@ -233,7 +233,10 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(onPressed: () {
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
+            }, child: const Text('Cancel')),
             FilledButton(
               onPressed: () {
                 final values = [revenue.text, cogs.text, expenses.text, tax.text];
@@ -246,6 +249,7 @@ class _HomePageState extends State<HomePage> {
                   refresh(() => error = 'Enter valid amounts and a tax rate from 0 to 100%.');
                   return;
                 }
+                if (!dialogContext.mounted) return;
                 Navigator.pop(
                   dialogContext,
                   Entry(
@@ -292,8 +296,14 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Delete this record?'),
         content: Text('“${entry.label}” will be permanently removed from this device.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          FilledButton.tonal(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
+          TextButton(onPressed: () {
+            if (!dialogContext.mounted) return;
+            Navigator.pop(dialogContext, false);
+          }, child: const Text('Cancel')),
+          FilledButton.tonal(onPressed: () {
+            if (!dialogContext.mounted) return;
+            Navigator.pop(dialogContext, true);
+          }, child: const Text('Delete')),
         ],
       ),
     );
@@ -406,9 +416,18 @@ class _HomePageState extends State<HomePage> {
           title: const Text('Import backup'),
           content: Text('${imported.length} records found. Choose how to import them.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext, 'cancel'), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(dialogContext, 'merge'), child: const Text('Merge')),
-            FilledButton(onPressed: () => Navigator.pop(dialogContext, 'replace'), child: const Text('Replace all')),
+            TextButton(onPressed: () {
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext, 'cancel');
+            }, child: const Text('Cancel')),
+            TextButton(onPressed: () {
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext, 'merge');
+            }, child: const Text('Merge')),
+            FilledButton(onPressed: () {
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext, 'replace');
+            }, child: const Text('Replace all')),
           ],
         ),
       );
