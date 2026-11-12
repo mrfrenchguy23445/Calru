@@ -12,7 +12,8 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - run: sh tool/bootstrap_platforms.sh
+      - run: dart format .
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
