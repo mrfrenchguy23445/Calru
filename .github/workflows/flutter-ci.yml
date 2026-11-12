@@ -30,8 +30,6 @@ jobs:
         run: flutter pub get
       - name: Format Dart sources
         run: dart format .
-      - name: Show formatted async context for analyzer diagnostics
-        run: sed -n '1335,1350p' lib/main.dart
       - name: Static analysis
         run: flutter analyze
       - name: Unit and widget tests
