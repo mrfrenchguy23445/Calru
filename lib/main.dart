@@ -241,7 +241,8 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 final values = [revenue.text, cogs.text, expenses.text, tax.text];
                 if (!values.every(isValidMoneyInput) ||
-                    money(revenue.text) <= Decimal.zero ||
+                    revenue.text.trim().isEmpty ||
+                    money(revenue.text) < Decimal.zero ||
                     money(cogs.text) < Decimal.zero ||
                     money(expenses.text) < Decimal.zero ||
                     money(tax.text) < Decimal.zero ||
@@ -321,27 +322,34 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> exportData({required bool csv}) async {
     final fileName = csv ? 'calru-records.csv' : 'calru-backup.json';
+    final csvContent = <String>[
+      'name,currency,revenue,cogs,expenses,gross_profit,net_profit,gross_margin,tax_rate_percent,estimated_tax,net_profit_after_tax,created_at',
+      ...entries.map((entry) {
+        final values = <Object>[
+          entry.label,
+          currency,
+          entry.revenue,
+          entry.cogs,
+          entry.expenses,
+          entry.grossProfit,
+          entry.netProfit,
+          entry.margin,
+          entry.taxRate,
+          entry.estimatedTax,
+          entry.netAfterTax,
+          entry.createdAt.toIso8601String(),
+        ];
+        return values.asMap().entries.map((cell) {
+          final raw = cell.value.toString();
+          final safe = cell.key == 0 && RegExp(r'^[\\s]*[=+\\-@]').hasMatch(raw)
+              ? "'$raw"
+              : raw;
+          return '"${safe.replaceAll('"', '""')}"';
+        }).join(',');
+      }),
+    ].join('\\n');
     final content = csv
-        ? <String>[
-            'name,revenue,cogs,expenses,gross_profit,net_profit,gross_margin,tax_rate,estimated_tax,net_after_tax,created_at',
-            ...entries.map((entry) => [
-                  entry.label,
-                  entry.revenue,
-                  entry.cogs,
-                  entry.expenses,
-                  entry.grossProfit,
-                  entry.netProfit,
-                  entry.margin,
-                  entry.taxRate,
-                  entry.estimatedTax,
-                  entry.netAfterTax,
-                  entry.createdAt.toIso8601String(),
-                ].map((value) {
-                  final raw = value.toString();
-                  final safe = RegExp(r'^[=+@-]').hasMatch(raw) ? "'$raw" : raw;
-                  return '"${safe.replaceAll('"', '""')}"';
-                }).join(',')),
-          ].join('\n')
+        ? csvContent
         : const JsonEncoder.withIndent('  ').convert({
             'format': 'calru-backup',
             'version': 1,
@@ -762,7 +770,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     const Text('Enter your figures to calculate profitability instantly.', style: TextStyle(color: muted)),
     const SizedBox(height: 25),
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(18)), child: Column(children: [
-      field('Calculation name', label, hint: 'e.g. Product launch'),
+      field('Calculation name', label, hint: 'e.g. Product launch', numeric: false),
       field('Revenue / sales', revenue, hint: '0.00'),
       field('Cost of goods sold', cogs, hint: '0.00'),
       field('Other expenses', expenses, hint: '0.00'),
@@ -782,8 +790,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     ])),
     const SizedBox(height: 16),
     FilledButton.icon(
-      onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || !isValidMoneyInput(taxRate.text) || r <= Decimal.zero || c < Decimal.zero || e < Decimal.zero || t < Decimal.zero || t > Decimal.fromInt(100) ? null : () async {
-        await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, taxRate: t, createdAt: DateTime.now()));
+      onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || !isValidMoneyInput(taxRate.text) || revenue.text.trim().isEmpty || r < Decimal.zero || c < Decimal.zero || e < Decimal.zero || t < Decimal.zero || t > Decimal.fromInt(100) ? null : () async {
+        await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, taxRate: t, createdAt: DateTime.now().toUtc()));
         if (!mounted) {
           return;
         }
@@ -794,12 +802,18 @@ class _CalculatorPageState extends State<CalculatorPage> {
     ),
   ])))));
 
-  Widget field(String title, TextEditingController controller, {String? hint}) => Padding(
+  Widget field(String title, TextEditingController controller, {String? hint, bool numeric = true}) => Padding(
     padding: const EdgeInsets.only(bottom: 14),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(title, style: const TextStyle(fontSize: 13, color: muted, fontWeight: FontWeight.w600)),
       const SizedBox(height: 7),
-      TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,-]'))], decoration: InputDecoration(hintText: hint), onChanged: (_) => setState(() {})),
+      TextField(
+        controller: controller,
+        keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
+        inputFormatters: numeric ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,-]'))] : null,
+        decoration: InputDecoration(hintText: hint),
+        onChanged: (_) => setState(() {}),
+      ),
     ]),
   );
 
@@ -923,7 +937,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       isValidMoneyInput(cogs.text) &&
       isValidMoneyInput(expenses.text) &&
       isValidMoneyInput(taxRate.text) &&
-      money(revenue.text) > Decimal.zero &&
+      revenue.text.trim().isNotEmpty && money(revenue.text) >= Decimal.zero &&
       money(cogs.text) >= Decimal.zero &&
       money(expenses.text) >= Decimal.zero &&
       money(taxRate.text) >= Decimal.zero &&
@@ -1007,7 +1021,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     const SizedBox(height: 5),
     const Text('OCR suggestions are not trusted until you verify them.', style: TextStyle(color: muted, fontSize: 12)),
     const SizedBox(height: 14),
-    input('Record name', label),
+    input('Record name', label, numeric: false),
     input('Revenue', revenue),
     input('Cost of goods sold', cogs),
     input('Other expenses', expenses),
@@ -1021,10 +1035,16 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     ),
   ])))));
 
-  Widget input(String title, TextEditingController controller) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget input(String title, TextEditingController controller, {bool numeric = true}) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(title, style: const TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600)),
     const SizedBox(height: 6),
-    TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,-]'))], decoration: const InputDecoration(hintText: '0.00'), onChanged: (_) => setState(() {})),
+    TextField(
+      controller: controller,
+      keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
+      inputFormatters: numeric ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,-]'))] : null,
+      decoration: const InputDecoration(hintText: '0.00'),
+      onChanged: (_) => setState(() {}),
+    ),
   ]));
 }
 
