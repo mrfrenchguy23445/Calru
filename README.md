@@ -21,7 +21,7 @@ Calru is a local-first financial workspace for estimating revenue, gross profit,
 | Platform | Development / build target | Notes |
 | --- | --- | --- |
 | Android | APK | Android SDK required |
-| iOS | iOS app | macOS and Xcode required; App Store distribution requires signing |
+| iOS | iOS app (15.5+) | macOS and Xcode required; App Store distribution requires signing |
 | Windows | Desktop app | Visual Studio with Desktop development with C++ workload |
 | macOS | Desktop app | Xcode command-line tools required |
 | Linux | Desktop app | GTK development libraries, CMake, Ninja, and Clang |
