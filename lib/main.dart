@@ -791,7 +791,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     const SizedBox(height: 16),
     FilledButton.icon(
       onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || !isValidMoneyInput(taxRate.text) || revenue.text.trim().isEmpty || r < Decimal.zero || c < Decimal.zero || e < Decimal.zero || t < Decimal.zero || t > Decimal.fromInt(100) ? null : () async {
-        await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, taxRate: t, createdAt: DateTime.now().toUtc()));
+        await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, taxRate: t, createdAt: DateTime.now().toUtc().toUtc()));
         if (!mounted) {
           return;
         }
@@ -951,7 +951,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       cogs: money(cogs.text),
       expenses: money(expenses.text),
       taxRate: money(taxRate.text),
-      createdAt: DateTime.now(),
+      createdAt: DateTime.now().toUtc(),
     ));
     if (!mounted) {
       return;
