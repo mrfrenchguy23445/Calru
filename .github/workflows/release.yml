@@ -108,7 +108,7 @@ jobs:
         run: |
           mkdir -p release-assets
           ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app release-assets/calru-ios-unsigned.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.package }}
           path: release-assets/*
