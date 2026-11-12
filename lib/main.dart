@@ -63,7 +63,9 @@ bool isValidMoneyInput(String value) {
 
 Decimal money(String value) {
   final cleaned = value.trim().replaceAll(',', '');
-  if (cleaned.isEmpty || !isValidMoneyInput(value)) return Decimal.zero;
+  if (cleaned.isEmpty || !isValidMoneyInput(value)) {
+    return Decimal.zero;
+  }
   return Decimal.tryParse(cleaned) ?? Decimal.zero;
 }
 
@@ -75,7 +77,9 @@ Decimal? calculateBreakEvenRevenue({
   required Decimal expenses,
 }) {
   final contribution = revenue - cogs;
-  if (revenue <= Decimal.zero || contribution <= Decimal.zero) return null;
+  if (revenue <= Decimal.zero || contribution <= Decimal.zero) {
+    return null;
+  }
   return (expenses * revenue / contribution)
       .toDecimal(scaleOnInfinitePrecision: 2);
 }
@@ -161,7 +165,9 @@ class _HomePageState extends State<HomePage> {
       }
     }
     currency = prefs.getString('calru.currency') ?? 'USD';
-    if (mounted) setState(() => loaded = true);
+    if (mounted) {
+      setState(() => loaded = true);
+    }
   }
 
   Future<void> saveEntries() async {
@@ -263,12 +269,19 @@ class _HomePageState extends State<HomePage> {
     cogs.dispose();
     expenses.dispose();
     tax.dispose();
-    if (edited == null || !mounted) return;
+    if (edited == null) return;
+    if (!mounted) {
+      return;
+    }
     final index = entries.indexOf(entry);
-    if (index < 0) return;
+    if (index < 0) {
+      return;
+    }
     setState(() => entries[index] = edited);
     await saveEntries();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record updated.')));
   }
 
@@ -284,10 +297,15 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true) return;
+    if (!mounted) {
+      return;
+    }
     setState(() => entries.remove(entry));
     await saveEntries();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted.')));
   }
 
@@ -328,10 +346,17 @@ class _HomePageState extends State<HomePage> {
         mimeType: csv ? 'text/csv' : 'application/json',
         bytes: Uint8List.fromList(utf8.encode(content)),
       );
-      if (!mounted || path == null) return;
+      if (path == null) {
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $error')));
     }
   }
@@ -342,7 +367,9 @@ class _HomePageState extends State<HomePage> {
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
-      if (selection.isEmpty) return;
+      if (selection.isEmpty) {
+        return;
+      }
       final file = selection.single;
       final bytes = await file.readAsBytes();
       final decoded = jsonDecode(utf8.decode(bytes));
@@ -370,7 +397,9 @@ class _HomePageState extends State<HomePage> {
         }
         return Entry.fromJson(record);
       }).toList();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       final choice = await showDialog<String>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -383,7 +412,10 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       );
-      if (choice == null || choice == 'cancel' || !mounted) return;
+      if (choice == null || choice == 'cancel') return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         if (choice == 'replace') {
           entries = imported;
@@ -401,10 +433,14 @@ class _HomePageState extends State<HomePage> {
         }
       });
       await saveEntries();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Imported ${imported.length} records.')));
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $error')));
     }
   }
@@ -730,7 +766,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
     FilledButton.icon(
       onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || !isValidMoneyInput(taxRate.text) || r <= Decimal.zero || c < Decimal.zero || e < Decimal.zero || t < Decimal.zero || t > Decimal.fromInt(100) ? null : () async {
         await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, taxRate: t, createdAt: DateTime.now()));
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Calculation saved to your records.')));
       },
       icon: const Icon(Icons.save_outlined), label: const Text('Save calculation'),
@@ -779,7 +817,9 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 
   @override
   void dispose() {
-    if (Platform.isAndroid || Platform.isIOS) recognizer.close();
+    if (Platform.isAndroid || Platform.isIOS) {
+      recognizer.close();
+    }
     label.dispose(); revenue.dispose(); cogs.dispose(); expenses.dispose();
     extractedTextController.dispose(); taxRate.dispose();
     super.dispose();
@@ -787,14 +827,19 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 
   Future<void> importImage() async {
     final result = await FilePicker.pickFiles(type: FileType.image);
-    if (!mounted || result.isEmpty || result.single.path == null) return;
+    if (!mounted) {
+      return;
+    }
+    if (result.isEmpty || result.single.path == null) return;
     setState(() { imagePath = result.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; extractedTextController.clear(); });
     await recognize();
   }
 
   Future<void> recognize() async {
     final path = imagePath;
-    if (path == null) return;
+    if (path == null) {
+      return;
+    }
     setState(() => processing = true);
     try {
       String text;
@@ -804,10 +849,14 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
         text = result.text;
       } else {
         final result = await Process.run('tesseract', [path, 'stdout', '--psm', '6']);
-        if (result.exitCode != 0) throw Exception(result.stderr.toString().trim().isEmpty ? 'Tesseract OCR failed.' : result.stderr.toString());
+        if (result.exitCode != 0) {
+          throw Exception(result.stderr.toString().trim().isEmpty ? 'Tesseract OCR failed.' : result.stderr.toString());
+        }
         text = result.stdout.toString();
       }
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         extractedText = text;
         extractedTextController.text = text;
@@ -815,9 +864,13 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
         suggestNumbers(text);
       });
     } catch (error) {
-      if (mounted) setState(() => status = 'OCR unavailable: $error. Enter values manually or install Tesseract on desktop.');
+      if (mounted) {
+        setState(() => status = 'OCR unavailable: $error. Enter values manually or install Tesseract on desktop.');
+      }
     } finally {
-      if (mounted) setState(() => processing = false);
+      if (mounted) {
+        setState(() => processing = false);
+      }
     }
   }
 
@@ -827,7 +880,9 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       for (final line in lines) {
         if (keys.any((key) => line.toLowerCase().contains(key))) {
           final matches = RegExp(r'(?<![A-Za-z])[-]?\d[\d,]*(?:\.\d{1,2})?').allMatches(line).toList();
-          if (matches.isNotEmpty) return matches.last.group(0)!.replaceAll(',', '');
+          if (matches.isNotEmpty) {
+            return matches.last.group(0)!.replaceAll(',', '');
+          }
         }
       }
       return null;
@@ -835,9 +890,15 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     final rev = find(['total revenue', 'revenue', 'gross sales', 'total sales', 'sales', 'grand total']);
     final cost = find(['cost of goods', 'cogs', 'cost']);
     final expense = find(['expenses', 'operating expense']);
-    if (rev != null) revenue.text = rev;
-    if (cost != null) cogs.text = cost;
-    if (expense != null) expenses.text = expense;
+    if (rev != null) {
+      revenue.text = rev;
+    }
+    if (cost != null) {
+      cogs.text = cost;
+    }
+    if (expense != null) {
+      expenses.text = expense;
+    }
   }
 
   bool get canSave =>
@@ -860,7 +921,9 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       taxRate: money(taxRate.text),
       createdAt: DateTime.now(),
     ));
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Reviewed screenshot figures saved.')),
     );
