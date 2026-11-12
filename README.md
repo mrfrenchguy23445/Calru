@@ -14,7 +14,7 @@ Calru is a local-first financial workspace for estimating revenue, gross profit,
 - **Desktop OCR:** local Tesseract executable on Linux, Windows, and macOS.
 - **Data portability:** export records to CSV, create JSON backups, and restore or merge backups.
 - **Local-first storage:** records and preferences are stored on the device; no account or hosted backend is required.
-- **Currency display:** switch between USD, EUR, GBP, INR, LKR, SGD, AUD, and CAD.
+- **Currency label:** choose USD, EUR, GBP, INR, LKR, SGD, AUD, or CAD. This changes the displayed currency label only; it does not perform foreign-exchange conversion. Keep records in one currency per dataset.
 
 ## Supported platforms
 
