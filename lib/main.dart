@@ -70,16 +70,23 @@ class Entry {
     required this.cogs,
     required this.expenses,
     required this.createdAt,
-  });
+    Decimal? taxRate,
+  }) : taxRate = taxRate ?? Decimal.zero;
 
   final String label;
   final Decimal revenue;
   final Decimal cogs;
   final Decimal expenses;
+  final Decimal taxRate;
   final DateTime createdAt;
 
   Decimal get grossProfit => revenue - cogs;
   Decimal get netProfit => grossProfit - expenses;
+  Decimal get estimatedTax => netProfit <= Decimal.zero || taxRate <= Decimal.zero
+      ? Decimal.zero
+      : (netProfit * taxRate / Decimal.fromInt(100))
+          .toDecimal(scaleOnInfinitePrecision: 2);
+  Decimal get netAfterTax => netProfit - estimatedTax;
   Decimal get margin => revenue == Decimal.zero
       ? Decimal.zero
       : (grossProfit / revenue * Decimal.fromInt(100))
@@ -90,6 +97,7 @@ class Entry {
         'revenue': revenue.toString(),
         'cogs': cogs.toString(),
         'expenses': expenses.toString(),
+        'taxRate': taxRate.toString(),
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -98,6 +106,7 @@ class Entry {
         revenue: money(json['revenue'] as String? ?? '0'),
         cogs: money(json['cogs'] as String? ?? '0'),
         expenses: money(json['expenses'] as String? ?? '0'),
+        taxRate: money(json['taxRate'] as String? ?? '0'),
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
       );
 }
@@ -149,8 +158,11 @@ class _HomePageState extends State<HomePage> {
   Decimal get totalCogs => entries.fold(Decimal.zero, (sum, item) => sum + item.cogs);
   Decimal get totalExpenses =>
       entries.fold(Decimal.zero, (sum, item) => sum + item.expenses);
+  Decimal get totalTax =>
+      entries.fold(Decimal.zero, (sum, item) => sum + item.estimatedTax);
   Decimal get grossProfit => totalRevenue - totalCogs;
   Decimal get netProfit => grossProfit - totalExpenses;
+  Decimal get netProfitAfterTax => netProfit - totalTax;
   String get symbol => currency == 'USD' ? '\$' : currency == 'EUR' ? '€' : currency == 'GBP' ? '£' : currency == 'INR' ? '₹' : currency == 'LKR' ? 'Rs ' : currency == 'SGD' ? 'S\$' : '$currency ';
 
   Future<void> addEntry(Entry entry) async {
@@ -392,6 +404,7 @@ class _HomePageState extends State<HomePage> {
           MetricCard(title: 'Gross profit', value: '$symbol${amount(grossProfit)}', icon: Icons.account_balance_wallet_outlined, color: green),
           MetricCard(title: 'Gross margin', value: totalRevenue == Decimal.zero ? '—' : '${(grossProfit / totalRevenue * Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%', icon: Icons.donut_large_rounded, color: const Color(0xFFB59BFF)),
           MetricCard(title: 'Net profit', value: '$symbol${amount(netProfit)}', icon: Icons.trending_up_rounded, color: green),
+          MetricCard(title: 'After estimated tax', value: '$symbol${amount(netProfitAfterTax)}', icon: Icons.account_balance_outlined, color: const Color(0xFFB59BFF)),
         ],
       ),
       const SizedBox(height: 18),
@@ -406,8 +419,10 @@ class _HomePageState extends State<HomePage> {
           BreakdownRow(label: 'Cost of goods sold', value: totalCogs, symbol: symbol, color: const Color(0xFFF0B66D), negative: true),
           BreakdownRow(label: 'Gross profit', value: grossProfit, symbol: symbol, color: green, strong: true),
           BreakdownRow(label: 'Operating expenses', value: totalExpenses, symbol: symbol, color: const Color(0xFFE18A8A), negative: true),
+          BreakdownRow(label: 'Estimated tax', value: totalTax, symbol: symbol, color: const Color(0xFFE18A8A), negative: true),
           const Divider(height: 28, color: Color(0xFF293542)),
-          BreakdownRow(label: 'Estimated net profit', value: netProfit, symbol: symbol, color: green, strong: true),
+          BreakdownRow(label: 'Net profit before tax', value: netProfit, symbol: symbol, color: green, strong: true),
+          BreakdownRow(label: 'Net profit after estimated tax', value: netProfitAfterTax, symbol: symbol, color: const Color(0xFFB59BFF), strong: true),
         ]),
       ),
       const SizedBox(height: 18),
@@ -533,18 +548,26 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final revenue = TextEditingController();
   final cogs = TextEditingController();
   final expenses = TextEditingController();
-  bool saved = false;
+  final taxRate = TextEditingController(text: '0');
   Decimal get r => money(revenue.text);
   Decimal get c => money(cogs.text);
   Decimal get e => money(expenses.text);
+  Decimal get t => money(taxRate.text);
   Decimal get gross => r - c;
   Decimal get net => gross - e;
+  Decimal get estimatedTax => net <= Decimal.zero || t <= Decimal.zero
+      ? Decimal.zero
+      : (net * t / Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2);
+  Decimal get afterTax => net - estimatedTax;
+  Decimal? get breakEvenRevenue => r <= Decimal.zero || gross <= Decimal.zero
+      ? null
+      : (e * r / gross).toDecimal(scaleOnInfinitePrecision: 2);
   String get margin => r == Decimal.zero
       ? '—'
       : '${(gross / r * Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%';
 
   @override
-  void dispose() { label.dispose(); revenue.dispose(); cogs.dispose(); expenses.dispose(); super.dispose(); }
+  void dispose() { label.dispose(); revenue.dispose(); cogs.dispose(); expenses.dispose(); taxRate.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) => SafeArea(child: SingleChildScrollView(padding: const EdgeInsets.all(26), child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -559,6 +582,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       field('Revenue / sales', revenue, hint: '0.00'),
       field('Cost of goods sold', cogs, hint: '0.00'),
       field('Other expenses', expenses, hint: '0.00'),
+      field('Estimated tax rate (%)', taxRate, hint: '0'),
     ])),
     const SizedBox(height: 15),
     Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: accent.withValues(alpha: .25)),), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -566,13 +590,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
       const SizedBox(height: 16),
       resultRow('Gross profit', gross, green, big: true),
       resultRow('Gross margin', null, accent, extra: margin),
+      resultRow('Break-even revenue', breakEvenRevenue, accent, extra: breakEvenRevenue == null ? '—' : '${widget.currencySymbol}${amount(breakEvenRevenue!)}'),
       resultRow('Net profit (before tax)', net, net < Decimal.zero ? const Color(0xFFE18A8A) : green, big: true),
-      if (r < Decimal.zero || c < Decimal.zero || e < Decimal.zero) const Text('Negative inputs detected. Check the values before saving.', style: TextStyle(color: Color(0xFFE18A8A), fontSize: 12)),
+      resultRow('Estimated tax', estimatedTax, const Color(0xFFE18A8A)),
+      resultRow('Net profit (after tax)', afterTax, afterTax < Decimal.zero ? const Color(0xFFE18A8A) : green, big: true),
+      if (r < Decimal.zero || c < Decimal.zero || e < Decimal.zero || t < Decimal.zero || t > Decimal.fromInt(100)) const Text('Check your inputs. Costs and tax rate must be non-negative, and tax rate cannot exceed 100%.', style: TextStyle(color: Color(0xFFE18A8A), fontSize: 12)),
     ])),
     const SizedBox(height: 16),
     FilledButton.icon(
-      onPressed: r <= Decimal.zero || c < Decimal.zero || e < Decimal.zero ? null : () async {
-        await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, createdAt: DateTime.now()));
+      onPressed: r <= Decimal.zero || c < Decimal.zero || e < Decimal.zero || t < Decimal.zero || t > Decimal.fromInt(100) ? null : () async {
+        await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, taxRate: t, createdAt: DateTime.now()));
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Calculation saved to your records.')));
       },
