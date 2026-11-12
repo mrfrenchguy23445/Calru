@@ -1,0 +1,15 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+*.iml
+.idea/
+.vscode/
+# Native build outputs
+android/.gradle/
+ios/Pods/
+macos/Pods/
