@@ -296,7 +296,7 @@ class _HomePageState extends State<HomePage> {
     final fileName = csv ? 'calru-records.csv' : 'calru-backup.json';
     final content = csv
         ? <String>[
-            'name,revenue,cogs,expenses,gross_profit,net_profit,gross_margin,created_at',
+            'name,revenue,cogs,expenses,gross_profit,net_profit,gross_margin,tax_rate,estimated_tax,net_after_tax,created_at',
             ...entries.map((entry) => [
                   entry.label,
                   entry.revenue,
@@ -305,6 +305,9 @@ class _HomePageState extends State<HomePage> {
                   entry.grossProfit,
                   entry.netProfit,
                   entry.margin,
+                  entry.taxRate,
+                  entry.estimatedTax,
+                  entry.netAfterTax,
                   entry.createdAt.toIso8601String(),
                 ].map((value) {
                   final raw = value.toString();
@@ -355,6 +358,13 @@ class _HomePageState extends State<HomePage> {
           if (!isValidMoneyInput(record[key]?.toString() ?? '0')) {
             throw FormatException('Invalid $key value in backup.');
           }
+        }
+        if (money(record['revenue']?.toString() ?? '0') <= Decimal.zero ||
+            money(record['cogs']?.toString() ?? '0') < Decimal.zero ||
+            money(record['expenses']?.toString() ?? '0') < Decimal.zero ||
+            money(record['taxRate']?.toString() ?? '0') < Decimal.zero ||
+            money(record['taxRate']?.toString() ?? '0') > Decimal.fromInt(100)) {
+          throw const FormatException('Backup contains out-of-range financial values.');
         }
         if (DateTime.tryParse(record['createdAt']?.toString() ?? '') == null) {
           throw const FormatException('A record has an invalid creation date.');
@@ -770,7 +780,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 
   @override
   void dispose() {
-    recognizer.close();
+    if (Platform.isAndroid || Platform.isIOS) recognizer.close();
     label.dispose(); revenue.dispose(); cogs.dispose(); expenses.dispose();
     extractedTextController.dispose(); taxRate.dispose();
     super.dispose();
@@ -829,6 +839,32 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     if (rev != null) revenue.text = rev;
     if (cost != null) cogs.text = cost;
     if (expense != null) expenses.text = expense;
+  }
+
+  bool get canSave =>
+      isValidMoneyInput(revenue.text) &&
+      isValidMoneyInput(cogs.text) &&
+      isValidMoneyInput(expenses.text) &&
+      isValidMoneyInput(taxRate.text) &&
+      money(revenue.text) > Decimal.zero &&
+      money(cogs.text) >= Decimal.zero &&
+      money(expenses.text) >= Decimal.zero &&
+      money(taxRate.text) >= Decimal.zero &&
+      money(taxRate.text) <= Decimal.fromInt(100);
+
+  Future<void> saveFigures() async {
+    await widget.onSave(Entry(
+      label: label.text.trim().isEmpty ? 'Screenshot import' : label.text.trim(),
+      revenue: money(revenue.text),
+      cogs: money(cogs.text),
+      expenses: money(expenses.text),
+      taxRate: money(taxRate.text),
+      createdAt: DateTime.now(),
+    ));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reviewed screenshot figures saved.')),
+    );
   }
 
   @override
@@ -897,11 +933,12 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     input('Other expenses', expenses),
     input('Estimated tax rate (%)', taxRate),
     const SizedBox(height: 12),
-    FilledButton.icon(onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || !isValidMoneyInput(taxRate.text) || money(revenue.text) <= Decimal.zero || money(cogs.text) < Decimal.zero || money(expenses.text) < Decimal.zero || money(taxRate.text) < Decimal.zero || money(taxRate.text) > Decimal.fromInt(100) ? null : () async {
-      await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Screenshot import' : label.text.trim(), revenue: money(revenue.text), cogs: money(cogs.text), expenses: money(expenses.text), taxRate: money(taxRate.text), createdAt: DateTime.now()));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reviewed screenshot figures saved.')));
-    }, icon: const Icon(Icons.verified_outlined), label: const Text('Confirm and save figures'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52))),
+    FilledButton.icon(
+      onPressed: canSave ? saveFigures : null,
+      icon: const Icon(Icons.verified_outlined),
+      label: const Text('Confirm and save figures'),
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+    ),
   ])))));
 
   Widget input(String title, TextEditingController controller) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
