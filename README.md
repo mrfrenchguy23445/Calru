@@ -84,4 +84,4 @@ See [docs/SCREENSHOT-OCR.md](docs/SCREENSHOT-OCR.md) for installation steps, sup
 
 GitHub Actions runs formatting checks, static analysis, unit/widget tests, and release builds for Android, Linux, Windows, macOS, and iOS. Build artifacts are attached to successful workflow runs for testing.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the application structure and [docs/RELEASE.md](docs/RELEASE.md) for remaining distribution requirements.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the application structure, [docs/PRIVACY.md](docs/PRIVACY.md) for data handling, and [docs/RELEASE.md](docs/RELEASE.md) for distribution requirements.
