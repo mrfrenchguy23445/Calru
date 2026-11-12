@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
@@ -113,6 +114,7 @@ class _HomePageState extends State<HomePage> {
   String currency = 'USD';
   List<Entry> entries = [];
   bool loaded = false;
+  String historyQuery = '';
 
   @override
   void initState() {
@@ -154,6 +156,122 @@ class _HomePageState extends State<HomePage> {
   Future<void> addEntry(Entry entry) async {
     setState(() => entries.insert(0, entry));
     await saveEntries();
+  }
+
+  Future<void> deleteEntry(Entry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete this record?'),
+        content: Text('“${entry.label}” will be permanently removed from this device.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton.tonal(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => entries.remove(entry));
+    await saveEntries();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted.')));
+  }
+
+  Future<void> exportData({required bool csv}) async {
+    final fileName = csv ? 'calru-records.csv' : 'calru-backup.json';
+    final content = csv
+        ? <String>[
+            'name,revenue,cogs,expenses,gross_profit,net_profit,gross_margin,created_at',
+            ...entries.map((entry) => [
+                  entry.label,
+                  entry.revenue,
+                  entry.cogs,
+                  entry.expenses,
+                  entry.grossProfit,
+                  entry.netProfit,
+                  entry.margin,
+                  entry.createdAt.toIso8601String(),
+                ].map((value) => '"${value.toString().replaceAll('"', '""')}"').join(',')),
+          ].join('\n')
+        : const JsonEncoder.withIndent('  ').convert({
+            'format': 'calru-backup',
+            'version': 1,
+            'currency': currency,
+            'exportedAt': DateTime.now().toUtc().toIso8601String(),
+            'records': entries.map((entry) => entry.toJson()).toList(),
+          });
+    try {
+      final path = await FilePicker.platform.saveFile(
+        dialogTitle: csv ? 'Export Calru records' : 'Back up Calru data',
+        fileName: fileName,
+        bytes: Uint8List.fromList(utf8.encode(content)),
+      );
+      if (!mounted || path == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $error')));
+    }
+  }
+
+  Future<void> importBackup() async {
+    try {
+      final selection = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        withData: true,
+      );
+      if (selection == null || selection.files.isEmpty) return;
+      final file = selection.files.single;
+      final bytes = file.bytes ??
+          (file.path == null ? null : await File(file.path!).readAsBytes());
+      if (bytes == null) throw const FormatException('The selected file could not be read.');
+      final decoded = jsonDecode(utf8.decode(bytes));
+      final backup = decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+      final rawRecords = backup?['records'] ?? decoded;
+      if (rawRecords is! List) {
+        throw const FormatException('This is not a Calru records backup.');
+      }
+      final imported = rawRecords
+          .map((item) => Entry.fromJson(Map<String, dynamic>.from(item as Map)))
+          .toList();
+      if (!mounted) return;
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Import backup'),
+          content: Text('${imported.length} records found. Choose how to import them.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'cancel'), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'merge'), child: const Text('Merge')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, 'replace'), child: const Text('Replace all')),
+          ],
+        ),
+      );
+      if (choice == null || choice == 'cancel' || !mounted) return;
+      setState(() {
+        if (choice == 'replace') {
+          entries = imported;
+        } else {
+          final existing = entries.map((entry) => '${entry.label}|${entry.createdAt.toIso8601String()}').toSet();
+          entries = [
+            ...imported.where((entry) => !existing.contains('${entry.label}|${entry.createdAt.toIso8601String()}')),
+            ...entries,
+          ];
+        }
+        final restoredCurrency = backup?['currency'];
+        if (restoredCurrency is String &&
+            ['USD', 'EUR', 'GBP', 'INR', 'LKR', 'SGD', 'AUD', 'CAD'].contains(restoredCurrency)) {
+          currency = restoredCurrency;
+        }
+      });
+      await saveEntries();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Imported ${imported.length} records.')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $error')));
+    }
   }
 
   @override
@@ -222,11 +340,29 @@ class _HomePageState extends State<HomePage> {
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.tune_rounded, color: muted),
                     onSelected: (value) async {
+                      if (value == 'export_csv') {
+                        await exportData(csv: true);
+                        return;
+                      }
+                      if (value == 'export_json') {
+                        await exportData(csv: false);
+                        return;
+                      }
+                      if (value == 'import_json') {
+                        await importBackup();
+                        return;
+                      }
                       setState(() => currency = value);
                       await saveEntries();
                     },
-                    itemBuilder: (_) => ['USD', 'EUR', 'GBP', 'INR', 'LKR', 'SGD', 'AUD', 'CAD']
-                        .map((value) => PopupMenuItem(value: value, child: Text(value))).toList(),
+                    itemBuilder: (_) => [
+                      ...['USD', 'EUR', 'GBP', 'INR', 'LKR', 'SGD', 'AUD', 'CAD']
+                          .map((value) => PopupMenuItem(value: value, child: Text(value))),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(value: 'export_csv', child: Text('Export CSV')),
+                      const PopupMenuItem(value: 'export_json', child: Text('Back up as JSON')),
+                      const PopupMenuItem(value: 'import_json', child: Text('Restore JSON backup')),
+                    ],
                   ),
                 ]),
                 const SizedBox(height: 34),
@@ -280,14 +416,33 @@ class _HomePageState extends State<HomePage> {
         TextButton(onPressed: () => setState(() => page = 3), child: const Text('View history')),
       ]),
       if (entries.isEmpty) const EmptyState(text: 'No financial records yet. Add a calculation to start tracking.'),
-      ...entries.take(4).map((entry) => EntryTile(entry: entry, symbol: symbol)),
+      ...entries.take(4).map((entry) => EntryTile(entry: entry, symbol: symbol, onDelete: () => deleteEntry(entry))),
     ],
   ));
 
-  Widget history() => shell('Your records', 'Saved calculations, newest first.', Column(children: [
-    if (entries.isEmpty) const EmptyState(text: 'Your saved calculations will appear here.'),
-    ...entries.map((entry) => EntryTile(entry: entry, symbol: symbol)),
-  ]));
+  Widget history() {
+    final filtered = entries
+        .where((entry) => entry.label.toLowerCase().contains(historyQuery.toLowerCase()))
+        .toList();
+    return shell('Your records', 'Saved calculations, newest first.', Column(children: [
+      TextField(
+        decoration: const InputDecoration(
+          hintText: 'Search records',
+          prefixIcon: Icon(Icons.search_rounded),
+        ),
+        onChanged: (value) => setState(() => historyQuery = value),
+      ),
+      const SizedBox(height: 14),
+      if (entries.isEmpty) const EmptyState(text: 'Your saved calculations will appear here.'),
+      if (entries.isNotEmpty && filtered.isEmpty)
+        const EmptyState(text: 'No records match your search.'),
+      ...filtered.map((entry) => EntryTile(
+            entry: entry,
+            symbol: symbol,
+            onDelete: () => deleteEntry(entry),
+          )),
+    ]));
+  }
 }
 
 class MetricCard extends StatelessWidget {
@@ -336,9 +491,10 @@ class EmptyState extends StatelessWidget {
 }
 
 class EntryTile extends StatelessWidget {
-  const EntryTile({super.key, required this.entry, required this.symbol});
+  const EntryTile({super.key, required this.entry, required this.symbol, this.onDelete});
   final Entry entry;
   final String symbol;
+  final VoidCallback? onDelete;
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15),
@@ -354,6 +510,12 @@ class EntryTile extends StatelessWidget {
         Text('$symbol${amount(entry.grossProfit)}', style: const TextStyle(fontWeight: FontWeight.w700, color: green)),
         Text('Revenue $symbol${amount(entry.revenue)}', style: const TextStyle(color: muted, fontSize: 11)),
       ]),
+      if (onDelete != null)
+        IconButton(
+          tooltip: 'Delete record',
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete_outline_rounded, color: muted),
+        ),
     ]),
   );
 }
