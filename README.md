@@ -1,51 +1,87 @@
 # Calru
 
-Calru is a lightweight, local-first revenue, gross-profit and financial calculation studio.
+Calru is a local-first financial workspace for estimating revenue, gross profit, margins, break-even sales, tax, and net profit. It is built with Flutter and shares one Dart codebase across desktop and mobile.
 
-## Supported targets
+## Features
 
-- Windows
-- Linux
-- macOS
-- Android
-- iOS
+- **Financial calculator:** revenue, cost of goods sold, operating expenses, gross profit, gross margin, break-even revenue, estimated tax, and after-tax profit.
+- **Exact money arithmetic:** calculations use decimal/rational arithmetic rather than binary floating-point for monetary values.
+- **Dashboard:** combined revenue, costs, gross profit, margin, estimated tax, and net profit across saved records.
+- **Record history:** searchable records with edit and delete actions.
+- **Screenshot OCR:** import receipts, invoices, sales dashboards, and other financial screenshots; extract text and suggest amounts for review.
+- **Human verification:** OCR output is editable and never becomes a saved record until the user confirms it.
+- **Mobile OCR:** Google ML Kit on Android and iOS.
+- **Desktop OCR:** local Tesseract executable on Linux, Windows, and macOS.
+- **Data portability:** export records to CSV, create JSON backups, and restore or merge backups.
+- **Local-first storage:** records and preferences are stored on the device; no account or hosted backend is required.
+- **Currency display:** switch between USD, EUR, GBP, INR, LKR, SGD, AUD, and CAD.
 
-The shared Flutter application and financial calculation code are used across all targets. Native platform folders are generated from the Flutter SDK so the repository does not need to carry thousands of generated platform files.
+## Supported platforms
 
-## Current foundation
+| Platform | Development / build target | Notes |
+| --- | --- | --- |
+| Android | APK | Android SDK required |
+| iOS | iOS app | macOS and Xcode required; App Store distribution requires signing |
+| Windows | Desktop app | Visual Studio with Desktop development with C++ workload |
+| macOS | Desktop app | Xcode command-line tools required |
+| Linux | Desktop app | GTK development libraries, CMake, Ninja, and Clang |
 
-- Revenue, COGS, gross profit, gross margin and estimated net profit calculator.
-- Decimal arithmetic for monetary values.
-- Local record persistence and selectable display currency.
-- Screenshot import, OCR, editable extracted text and manual value correction.
-- Mobile OCR through Google ML Kit.
-- Desktop OCR through the locally installed Tesseract executable.
-- Review-before-save workflow: OCR suggestions are never silently treated as verified financial data.
+Flutter officially supports native deployment to these mobile and desktop families. See the [Flutter supported platforms](https://docs.flutter.dev/reference/supported-platforms) and [desktop guide](https://docs.flutter.dev/platform-integration/desktop).
 
-## Bootstrap
+## Requirements
 
-Install the Flutter stable SDK and the native prerequisites for your target platform. From the repository root:
+- Flutter stable SDK (CI uses the current stable channel).
+- Native SDK/toolchain for the platform you want to build.
+- Tesseract OCR installed and available on PATH for desktop screenshot recognition.
+
+## Run locally
+
+From the repository root:
 
 ```sh
 sh tool/bootstrap_platforms.sh
 flutter pub get
+dart format .
 flutter analyze
 flutter test
+flutter run
 ```
 
-Then launch on a connected device or desktop target:
+To run on a specific target:
 
 ```sh
 flutter devices
 flutter run -d <device-id>
 ```
 
-Linux desktop builds require the Flutter Linux toolchain and GTK development libraries. Windows builds require Visual Studio with the Desktop development with C++ workload. macOS and iOS builds require macOS and Xcode. Android builds require the Android SDK.
+## Build locally
 
-## Screenshot OCR
+```sh
+flutter build apk --release
+flutter build appbundle --release
+flutter build windows --release
+flutter build macos --release
+flutter build linux --release
+flutter build ios --release --no-codesign
+```
 
-See [docs/SCREENSHOT-OCR.md](docs/SCREENSHOT-OCR.md) for desktop Tesseract installation and OCR accuracy notes.
+Only build targets supported by the current host toolchain. iOS and macOS builds require macOS. See [docs/RELEASE.md](docs/RELEASE.md) for release packaging and signing requirements.
 
-## Accuracy and privacy
+## Screenshot OCR setup
 
-Calru uses decimal arithmetic for money and keeps core calculations local. OCR is probabilistic, so extracted values remain editable and require user confirmation. The initial app does not require an account or remote service.
+See [docs/SCREENSHOT-OCR.md](docs/SCREENSHOT-OCR.md) for installation steps, supported behavior, privacy notes, and OCR accuracy limitations.
+
+## Data, privacy, and accuracy
+
+- Financial records stay on the device unless the user explicitly exports or shares a backup.
+- CSV exports are intended for spreadsheets and further analysis.
+- JSON backups preserve records, currency preference, and tax-rate inputs.
+- OCR is probabilistic and can misread digits, decimal separators, currency symbols, or table columns. Always verify extracted figures against the original source.
+- Tax calculations are estimates based on the tax rate entered by the user. Calru does not determine tax liability, file taxes, or replace professional accounting advice.
+- Calru is an estimation and record-keeping tool, not a bank, payment processor, or accounting ledger.
+
+## CI
+
+GitHub Actions runs formatting checks, static analysis, unit/widget tests, and release builds for Android, Linux, Windows, macOS, and iOS. Build artifacts are attached to successful workflow runs for testing.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the application structure and [docs/RELEASE.md](docs/RELEASE.md) for remaining distribution requirements.
