@@ -170,7 +170,17 @@ class _HomePageState extends State<HomePage> {
   Decimal get grossProfit => totalRevenue - totalCogs;
   Decimal get netProfit => grossProfit - totalExpenses;
   Decimal get netProfitAfterTax => netProfit - totalTax;
-  String get symbol => currency == 'USD' ? '\$' : currency == 'EUR' ? '€' : currency == 'GBP' ? '£' : currency == 'INR' ? '₹' : currency == 'LKR' ? 'Rs ' : currency == 'SGD' ? 'S\$' : '$currency ';
+  String get symbol => switch (currency) {
+        'USD' => '\$',
+        'EUR' => '€',
+        'GBP' => '£',
+        'INR' => '₹',
+        'LKR' => 'Rs ',
+        'SGD' => 'S\$',
+        'AUD' => 'A\$',
+        'CAD' => 'C\$',
+        _ => '$currency ',
+      };
 
   Future<void> addEntry(Entry entry) async {
     setState(() => entries.insert(0, entry));
@@ -444,6 +454,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 8),
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.tune_rounded, color: muted),
+                    tooltip: 'Change display currency label (does not convert amounts)',
                     onSelected: (value) async {
                       if (value == 'export_csv') {
                         await exportData(csv: true);
