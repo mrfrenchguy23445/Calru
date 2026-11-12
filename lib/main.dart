@@ -55,7 +55,7 @@ class CalruApp extends StatelessWidget {
       );
 }
 
-final _moneyPattern = RegExp(r'^-?(?:(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d{1,2})?|\\.\\d{1,2})
+final _moneyPattern = RegExp(r'^-?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?|\.\d{1,2})$');
 
 String amount(Decimal value) => value.toStringAsFixed(2);
 
