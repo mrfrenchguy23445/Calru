@@ -30,7 +30,7 @@ Flutter officially supports native deployment to these mobile and desktop famili
 
 ## Requirements
 
-- Flutter stable SDK (CI uses the current stable channel).
+- Flutter 3.50 or newer (CI uses the current stable channel).
 - Native SDK/toolchain for the platform you want to build.
 - Tesseract OCR installed and available on PATH for desktop screenshot recognition.
 
