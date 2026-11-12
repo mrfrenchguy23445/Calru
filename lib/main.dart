@@ -728,6 +728,8 @@ class ScreenshotPage extends StatefulWidget {
 class _ScreenshotPageState extends State<ScreenshotPage> {
   String? imagePath;
   String extractedText = '';
+  final extractedTextController = TextEditingController();
+  final taxRate = TextEditingController(text: '0');
   bool processing = false;
   String status = 'Import a receipt, sales dashboard, invoice or financial screenshot.';
   final label = TextEditingController(text: 'Screenshot import');
@@ -740,13 +742,14 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
   void dispose() {
     recognizer.close();
     label.dispose(); revenue.dispose(); cogs.dispose(); expenses.dispose();
+    extractedTextController.dispose(); taxRate.dispose();
     super.dispose();
   }
 
   Future<void> importImage() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result.isEmpty || result.single.path == null) return;
-    setState(() { imagePath = result.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; });
+    setState(() { imagePath = result.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; extractedTextController.clear(); });
     await recognize();
   }
 
@@ -767,6 +770,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       }
       setState(() {
         extractedText = text;
+        extractedTextController.text = text;
         status = text.trim().isEmpty ? 'No text found. You can still enter values manually.' : 'Text extracted. Review every value before saving.';
         suggestNumbers(text);
       });
@@ -825,13 +829,31 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       if (processing) const SizedBox(width: 10),
       Expanded(child: Text(status, style: const TextStyle(color: muted, fontSize: 12))),
       if (imagePath != null) TextButton(onPressed: processing ? null : recognize, child: const Text('Run OCR again')),
-      if (imagePath != null) TextButton(onPressed: processing ? null : () => setState(() { imagePath = null; extractedText = ''; status = 'Import a receipt, sales dashboard, invoice or financial screenshot.'; }), child: const Text('Clear')),
+      if (imagePath != null) TextButton(onPressed: processing ? null : () => setState(() { imagePath = null; extractedText = ''; extractedTextController.clear(); status = 'Import a receipt, sales dashboard, invoice or financial screenshot.'; }), child: const Text('Clear')),
     ]),
     const SizedBox(height: 12),
     if (extractedText.isNotEmpty) Container(width: double.infinity, padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(14)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('RECOGNIZED TEXT', style: TextStyle(color: muted, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+      const Text('RECOGNIZED TEXT · EDITABLE', style: TextStyle(color: muted, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
-      SelectableText(extractedText, style: const TextStyle(fontSize: 12, height: 1.5)),
+      TextField(
+        controller: extractedTextController,
+        minLines: 4,
+        maxLines: 10,
+        keyboardType: TextInputType.multiline,
+        style: const TextStyle(fontSize: 12, height: 1.5),
+        decoration: const InputDecoration(hintText: 'Recognized text appears here'),
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          onPressed: () {
+            suggestNumbers(extractedTextController.text);
+            setState(() => status = 'Suggestions refreshed from your edited text. Verify every amount.');
+          },
+          icon: const Icon(Icons.refresh_rounded, size: 16),
+          label: const Text('Refresh amount suggestions'),
+        ),
+      ),
     ])),
     const SizedBox(height: 18),
     const Text('Review extracted figures', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
@@ -842,9 +864,10 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     input('Revenue', revenue),
     input('Cost of goods sold', cogs),
     input('Other expenses', expenses),
+    input('Estimated tax rate (%)', taxRate),
     const SizedBox(height: 12),
-    FilledButton.icon(onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || money(revenue.text) <= Decimal.zero || money(cogs.text) < Decimal.zero || money(expenses.text) < Decimal.zero ? null : () async {
-      await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Screenshot import' : label.text.trim(), revenue: money(revenue.text), cogs: money(cogs.text), expenses: money(expenses.text), createdAt: DateTime.now()));
+    FilledButton.icon(onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || !isValidMoneyInput(taxRate.text) || money(revenue.text) <= Decimal.zero || money(cogs.text) < Decimal.zero || money(expenses.text) < Decimal.zero || money(taxRate.text) < Decimal.zero || money(taxRate.text) > Decimal.fromInt(100) ? null : () async {
+      await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Screenshot import' : label.text.trim(), revenue: money(revenue.text), cogs: money(cogs.text), expenses: money(expenses.text), taxRate: money(taxRate.text), createdAt: DateTime.now()));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reviewed screenshot figures saved.')));
     }, icon: const Icon(Icons.verified_outlined), label: const Text('Confirm and save figures'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52))),
