@@ -59,6 +59,17 @@ final _moneyPattern = RegExp(r'^-?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?|\.
 
 String amount(Decimal value) => value.toStringAsFixed(2);
 
+Decimal? calculateBreakEvenRevenue({
+  required Decimal revenue,
+  required Decimal cogs,
+  required Decimal expenses,
+}) {
+  final contribution = revenue - cogs;
+  if (revenue <= Decimal.zero || contribution <= Decimal.zero) return null;
+  return (expenses * revenue / contribution)
+      .toDecimal(scaleOnInfinitePrecision: 2);
+}
+
 class Entry {
   Entry({
     required this.label,
@@ -555,9 +566,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       ? Decimal.zero
       : (net * t / Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2);
   Decimal get afterTax => net - estimatedTax;
-  Decimal? get breakEvenRevenue => r <= Decimal.zero || gross <= Decimal.zero
-      ? null
-      : (e * r / gross).toDecimal(scaleOnInfinitePrecision: 2);
+  Decimal? get breakEvenRevenue => calculateBreakEvenRevenue(revenue: r, cogs: c, expenses: e);
   String get margin => r == Decimal.zero
       ? '—'
       : '${(gross / r * Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%';
