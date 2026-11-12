@@ -298,6 +298,7 @@ class _HomePageState extends State<HomePage> {
       final path = await FilePicker.platform.saveFile(
         dialogTitle: csv ? 'Export Calru records' : 'Back up Calru data',
         fileName: fileName,
+        mimeType: csv ? 'text/csv' : 'application/json',
         bytes: Uint8List.fromList(utf8.encode(content)),
       );
       if (!mounted || path == null) return;
