@@ -344,7 +344,8 @@ class _HomePageState extends State<HomePage> {
           final safe = cell.key == 0 && RegExp(r'^[\s]*[=+\-@]').hasMatch(raw)
               ? "'$raw"
               : raw;
-          return '"' + safe.replaceAll('"', '""') + '"';
+          final escaped = safe.replaceAll('"', '""');
+          return '"$escaped"';
         }).join(',');
       }),
     ].join('\n');
@@ -791,8 +792,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     const SizedBox(height: 16),
     FilledButton.icon(
       onPressed: !isValidMoneyInput(revenue.text) || !isValidMoneyInput(cogs.text) || !isValidMoneyInput(expenses.text) || !isValidMoneyInput(taxRate.text) || revenue.text.trim().isEmpty || r < Decimal.zero || c < Decimal.zero || e < Decimal.zero || t < Decimal.zero || t > Decimal.fromInt(100) ? null : () async {
-        await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, taxRate: t, createdAt: DateTime.now().toUtc().toUtc()));
-        if (!mounted) {
+        await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, taxRate: t, createdAt: DateTime.now().toUtc()));
+        if (!context.mounted) {
           return;
         }
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Calculation saved to your records.')));
