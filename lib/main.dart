@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
@@ -107,7 +106,7 @@ class Entry {
   Decimal get netAfterTax => netProfit - estimatedTax;
   Decimal get margin => revenue == Decimal.zero
       ? Decimal.zero
-      : (grossProfit / revenue * Decimal.fromInt(100))
+      : (grossProfit / revenue * Decimal.fromInt(100).toRational())
           .toDecimal(scaleOnInfinitePrecision: 2);
 
   Map<String, dynamic> toJson() => {
@@ -323,7 +322,7 @@ class _HomePageState extends State<HomePage> {
             'records': entries.map((entry) => entry.toJson()).toList(),
           });
     try {
-      final path = await FilePicker.platform.saveFile(
+      final path = await FilePicker.saveFile(
         dialogTitle: csv ? 'Export Calru records' : 'Back up Calru data',
         fileName: fileName,
         mimeType: csv ? 'text/csv' : 'application/json',
@@ -339,7 +338,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> importBackup() async {
     try {
-      final selection = await FilePicker.platform.pickFiles(
+      final selection = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
@@ -527,7 +526,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           MetricCard(title: 'Total revenue', value: '$symbol${amount(totalRevenue)}', icon: Icons.south_west_rounded, color: accent),
           MetricCard(title: 'Gross profit', value: '$symbol${amount(grossProfit)}', icon: Icons.account_balance_wallet_outlined, color: green),
-          MetricCard(title: 'Gross margin', value: totalRevenue == Decimal.zero ? '—' : '${(grossProfit / totalRevenue * Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%', icon: Icons.donut_large_rounded, color: const Color(0xFFB59BFF)),
+          MetricCard(title: 'Gross margin', value: totalRevenue == Decimal.zero ? '—' : '${(grossProfit / totalRevenue * Decimal.fromInt(100).toRational()).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%', icon: Icons.donut_large_rounded, color: const Color(0xFFB59BFF)),
           MetricCard(title: 'Net profit', value: '$symbol${amount(netProfit)}', icon: Icons.trending_up_rounded, color: green),
           MetricCard(title: 'After estimated tax', value: '$symbol${amount(netProfitAfterTax)}', icon: Icons.account_balance_outlined, color: const Color(0xFFB59BFF)),
         ],
@@ -695,7 +694,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   Decimal? get breakEvenRevenue => calculateBreakEvenRevenue(revenue: r, cogs: c, expenses: e);
   String get margin => r == Decimal.zero
       ? '—'
-      : '${(gross / r * Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%';
+      : '${(gross / r * Decimal.fromInt(100).toRational()).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%';
 
   @override
   void dispose() { label.dispose(); revenue.dispose(); cogs.dispose(); expenses.dispose(); taxRate.dispose(); super.dispose(); }
@@ -787,7 +786,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
   }
 
   Future<void> importImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    final result = await FilePicker.pickFiles(type: FileType.image);
     if (!mounted || result.isEmpty || result.single.path == null) return;
     setState(() { imagePath = result.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; extractedTextController.clear(); });
     await recognize();
