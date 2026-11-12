@@ -343,8 +343,8 @@ class _HomePageState extends State<HomePage> {
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
-      if (selection == null || selection.files.isEmpty) return;
-      final file = selection.files.single;
+      if (selection.isEmpty) return;
+      final file = selection.single;
       final bytes = await file.readAsBytes();
       final decoded = jsonDecode(utf8.decode(bytes));
       final backup = decoded is Map ? Map<String, dynamic>.from(decoded) : null;
@@ -788,8 +788,8 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 
   Future<void> importImage() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (!mounted || result == null || result.files.isEmpty || result.files.single.path == null) return;
-    setState(() { imagePath = result.files.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; extractedTextController.clear(); });
+    if (!mounted || result.isEmpty || result.single.path == null) return;
+    setState(() { imagePath = result.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; extractedTextController.clear(); });
     await recognize();
   }
 
