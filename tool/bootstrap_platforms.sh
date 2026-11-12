@@ -7,4 +7,11 @@ if ! command -v flutter >/dev/null 2>&1; then
 fi
 
 flutter create --org com.calru --project-name calru --platforms=android,ios,linux,macos,windows .
-python3 tool/configure_ios.py
+if command -v python3 >/dev/null 2>&1; then
+  python3 tool/configure_ios.py
+elif command -v python >/dev/null 2>&1; then
+  python tool/configure_ios.py
+else
+  echo "Python 3 is required to configure the iOS deployment target."
+  exit 1
+fi
