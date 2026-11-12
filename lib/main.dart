@@ -313,13 +313,10 @@ class _HomePageState extends State<HomePage> {
       final selection = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
-        withData: true,
       );
-      if (selection == null || selection.files.isEmpty) return;
-      final file = selection.files.single;
-      final bytes = file.bytes ??
-          (file.path == null ? null : await File(file.path!).readAsBytes());
-      if (bytes == null) throw const FormatException('The selected file could not be read.');
+      if (selection.isEmpty) return;
+      final file = selection.single;
+      final bytes = await file.readAsBytes();
       final decoded = jsonDecode(utf8.decode(bytes));
       final backup = decoded is Map ? Map<String, dynamic>.from(decoded) : null;
       final rawRecords = backup?['records'] ?? decoded;
@@ -747,9 +744,9 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
   }
 
   Future<void> importImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: false);
-    if (result == null || result.files.single.path == null) return;
-    setState(() { imagePath = result.files.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; });
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result.isEmpty || result.single.path == null) return;
+    setState(() { imagePath = result.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; });
     await recognize();
   }
 
