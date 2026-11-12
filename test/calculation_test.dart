@@ -79,6 +79,36 @@ void main() {
       );
     });
 
+
+    test('round-trips tax rate and timestamps through JSON', () {
+      final entry = Entry(
+        label: 'Backup',
+        revenue: money('250.00'),
+        cogs: money('100.00'),
+        expenses: money('25.00'),
+        taxRate: money('12.5'),
+        createdAt: DateTime.utc(2026, 11, 12, 12),
+      );
+
+      final restored = Entry.fromJson(entry.toJson());
+      expect(restored.taxRate.toString(), '12.5');
+      expect(restored.createdAt, entry.createdAt);
+      expect(restored.netAfterTax.toStringAsFixed(2), '109.38');
+    });
+
+    test('loads legacy records without a tax rate', () {
+      final restored = Entry.fromJson({
+        'label': 'Legacy',
+        'revenue': '100',
+        'cogs': '20',
+        'expenses': '10',
+        'createdAt': '2026-01-01T00:00:00.000Z',
+      });
+
+      expect(restored.taxRate, Decimal.zero);
+      expect(restored.netAfterTax.toString(), '70');
+    });
+
     test('validates grouped monetary input instead of silently accepting it', () {
       expect(isValidMoneyInput('12,345.67'), isTrue);
       expect(isValidMoneyInput('12,34.67'), isFalse);
