@@ -22,3 +22,8 @@ The initial desktop implementation invokes the local executable; screenshots and
 ## Accuracy note
 
 OCR is probabilistic. Calru deliberately requires human review because visually similar digits, currency symbols, decimal separators, and table columns can be misread. Automatic field suggestions are heuristics, not accounting decisions.
+
+
+## Android release shrinking
+
+The Android bootstrap writes ProGuard rules that suppress R8 warnings for ML Kit's optional Chinese, Devanagari, Japanese, and Korean recognizer classes. Calru uses the Latin recognizer; those optional language modules are not included in the app.
