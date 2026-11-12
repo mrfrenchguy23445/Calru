@@ -9,7 +9,30 @@ permissions:
   contents: write
 
 jobs:
+  validate:
+    name: Validate release source
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate platform projects
+        shell: bash
+        run: sh tool/bootstrap_platforms.sh
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Format Dart sources
+        run: dart format .
+      - name: Static analysis
+        run: flutter analyze
+      - name: Unit and widget tests
+        run: flutter test
+
   build:
+    needs: validate
     name: Package ${{ matrix.target }}
     strategy:
       fail-fast: false
@@ -54,7 +77,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       - name: Build
-        shell: bash
         run: ${{ matrix.command }}
       - name: Package Android
         if: matrix.package == 'android'
