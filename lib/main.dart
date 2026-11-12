@@ -79,8 +79,10 @@ class Entry {
 
   Decimal get grossProfit => revenue - cogs;
   Decimal get netProfit => grossProfit - expenses;
-  Decimal get margin =>
-      revenue == Decimal.zero ? Decimal.zero : grossProfit / revenue * Decimal.fromInt(100);
+  Decimal get margin => revenue == Decimal.zero
+      ? Decimal.zero
+      : (grossProfit / revenue * Decimal.fromInt(100))
+          .toDecimal(scaleOnInfinitePrecision: 2);
 
   Map<String, dynamic> toJson() => {
         'label': label,
@@ -252,7 +254,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           MetricCard(title: 'Total revenue', value: '$symbol${amount(totalRevenue)}', icon: Icons.south_west_rounded, color: accent),
           MetricCard(title: 'Gross profit', value: '$symbol${amount(grossProfit)}', icon: Icons.account_balance_wallet_outlined, color: green),
-          MetricCard(title: 'Gross margin', value: totalRevenue == Decimal.zero ? '—' : '${(grossProfit / totalRevenue * Decimal.fromInt(100)).toStringAsFixed(2)}%', icon: Icons.donut_large_rounded, color: const Color(0xFFB59BFF)),
+          MetricCard(title: 'Gross margin', value: totalRevenue == Decimal.zero ? '—' : '${(grossProfit / totalRevenue * Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%', icon: Icons.donut_large_rounded, color: const Color(0xFFB59BFF)),
           MetricCard(title: 'Net profit', value: '$symbol${amount(netProfit)}', icon: Icons.trending_up_rounded, color: green),
         ],
       ),
@@ -346,7 +348,7 @@ class EntryTile extends StatelessWidget {
       const SizedBox(width: 12),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(entry.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-        Text('${entry.createdAt.toLocal().toString().substring(0, 16)}', style: const TextStyle(color: muted, fontSize: 11)),
+        Text(entry.createdAt.toLocal().toString().substring(0, 16), style: const TextStyle(color: muted, fontSize: 11)),
       ])),
       Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Text('$symbol${amount(entry.grossProfit)}', style: const TextStyle(fontWeight: FontWeight.w700, color: green)),
@@ -375,7 +377,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
   Decimal get e => money(expenses.text);
   Decimal get gross => r - c;
   Decimal get net => gross - e;
-  String get margin => r == Decimal.zero ? '—' : '${(gross / r * Decimal.fromInt(100)).toStringAsFixed(2)}%';
+  String get margin => r == Decimal.zero
+      ? '—'
+      : '${(gross / r * Decimal.fromInt(100)).toDecimal(scaleOnInfinitePrecision: 2).toStringAsFixed(2)}%';
 
   @override
   void dispose() { label.dispose(); revenue.dispose(); cogs.dispose(); expenses.dispose(); super.dispose(); }
@@ -400,14 +404,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
       const SizedBox(height: 16),
       resultRow('Gross profit', gross, green, big: true),
       resultRow('Gross margin', null, accent, extra: margin),
-      resultRow('Net profit (before tax)', net, net.isNegative ? const Color(0xFFE18A8A) : green, big: true),
-      if (r.isNegative || c.isNegative || e.isNegative) const Text('Negative inputs detected. Check the values before saving.', style: TextStyle(color: Color(0xFFE18A8A), fontSize: 12)),
+      resultRow('Net profit (before tax)', net, net < Decimal.zero ? const Color(0xFFE18A8A) : green, big: true),
+      if (r < Decimal.zero || c < Decimal.zero || e < Decimal.zero) const Text('Negative inputs detected. Check the values before saving.', style: TextStyle(color: Color(0xFFE18A8A), fontSize: 12)),
     ])),
     const SizedBox(height: 16),
     FilledButton.icon(
-      onPressed: r <= Decimal.zero || c.isNegative || e.isNegative ? null : () async {
+      onPressed: r <= Decimal.zero || c < Decimal.zero || e < Decimal.zero ? null : () async {
         await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Untitled' : label.text.trim(), revenue: r, cogs: c, expenses: e, createdAt: DateTime.now()));
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Calculation saved to your records.')));
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Calculation saved to your records.')));
       },
       icon: const Icon(Icons.save_outlined), label: const Text('Save calculation'),
       style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
@@ -540,6 +545,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       if (processing) const SizedBox(width: 10),
       Expanded(child: Text(status, style: const TextStyle(color: muted, fontSize: 12))),
       if (imagePath != null) TextButton(onPressed: processing ? null : recognize, child: const Text('Run OCR again')),
+      if (imagePath != null) TextButton(onPressed: processing ? null : () => setState(() { imagePath = null; extractedText = ''; status = 'Import a receipt, sales dashboard, invoice or financial screenshot.'; }), child: const Text('Clear')),
     ]),
     const SizedBox(height: 12),
     if (extractedText.isNotEmpty) Container(width: double.infinity, padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(14)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -557,9 +563,10 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     input('Cost of goods sold', cogs),
     input('Other expenses', expenses),
     const SizedBox(height: 12),
-    FilledButton.icon(onPressed: money(revenue.text) <= Decimal.zero || money(cogs.text).isNegative || money(expenses.text).isNegative ? null : () async {
+    FilledButton.icon(onPressed: money(revenue.text) <= Decimal.zero || money(cogs.text) < Decimal.zero || money(expenses.text) < Decimal.zero ? null : () async {
       await widget.onSave(Entry(label: label.text.trim().isEmpty ? 'Screenshot import' : label.text.trim(), revenue: money(revenue.text), cogs: money(cogs.text), expenses: money(expenses.text), createdAt: DateTime.now()));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reviewed screenshot figures saved.')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reviewed screenshot figures saved.')));
     }, icon: const Icon(Icons.verified_outlined), label: const Text('Confirm and save figures'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52))),
   ])))));
 
