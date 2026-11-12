@@ -373,14 +373,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> importBackup() async {
     try {
-      final selection = await FilePicker.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
-      if (selection.isEmpty) {
+      if (file == null) {
         return;
       }
-      final file = selection.single;
       final bytes = await file.readAsBytes();
       final decoded = jsonDecode(utf8.decode(bytes));
       final backup = decoded is Map ? Map<String, dynamic>.from(decoded) : null;
@@ -845,12 +844,11 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
   }
 
   Future<void> importImage() async {
-    final result = await FilePicker.pickFiles(type: FileType.image);
-    if (!mounted) {
+    final file = await FilePicker.pickFile(type: FileType.image);
+    if (!mounted || file == null || file.path == null) {
       return;
     }
-    if (result.isEmpty || result.single.path == null) return;
-    setState(() { imagePath = result.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; extractedTextController.clear(); });
+    setState(() { imagePath = file.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; extractedTextController.clear(); });
     await recognize();
   }
 
@@ -932,6 +930,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       money(taxRate.text) <= Decimal.fromInt(100);
 
   Future<void> saveFigures() async {
+    final messenger = ScaffoldMessenger.of(context);
     await widget.onSave(Entry(
       label: label.text.trim().isEmpty ? 'Screenshot import' : label.text.trim(),
       revenue: money(revenue.text),
@@ -943,7 +942,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       const SnackBar(content: Text('Reviewed screenshot figures saved.')),
     );
   }
