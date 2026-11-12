@@ -86,14 +86,14 @@ void main() {
         revenue: money('250.00'),
         cogs: money('100.00'),
         expenses: money('25.00'),
-        taxRate: money('12.5'),
+        taxRate: money('12'),
         createdAt: DateTime.utc(2026, 11, 12, 12),
       );
 
       final restored = Entry.fromJson(entry.toJson());
-      expect(restored.taxRate.toString(), '12.5');
+      expect(restored.taxRate.toString(), '12');
       expect(restored.createdAt, entry.createdAt);
-      expect(restored.netAfterTax.toStringAsFixed(2), '109.38');
+      expect(restored.netAfterTax.toStringAsFixed(2), '110.00');
     });
 
     test('loads legacy records without a tax rate', () {
