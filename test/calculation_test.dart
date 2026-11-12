@@ -42,4 +42,48 @@ void main() {
       expect(entry.margin.toString(), '0');
     });
   });
+
+  group('Calru planning calculations', () {
+    test('calculates estimated tax and after-tax profit', () {
+      final entry = Entry(
+        label: 'Tax example',
+        revenue: money('1000'),
+        cogs: money('400'),
+        expenses: money('100'),
+        taxRate: money('10'),
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+
+      expect(entry.estimatedTax.toStringAsFixed(2), '50.00');
+      expect(entry.netAfterTax.toStringAsFixed(2), '450.00');
+    });
+
+    test('calculates break-even revenue from contribution margin', () {
+      final result = calculateBreakEvenRevenue(
+        revenue: money('1000'),
+        cogs: money('400'),
+        expenses: money('300'),
+      );
+
+      expect(result?.toStringAsFixed(2), '500.00');
+    });
+
+    test('returns no break-even when contribution is zero or negative', () {
+      expect(
+        calculateBreakEvenRevenue(
+          revenue: money('100'),
+          cogs: money('100'),
+          expenses: money('20'),
+        ),
+        isNull,
+      );
+    });
+
+    test('validates grouped monetary input instead of silently accepting it', () {
+      expect(isValidMoneyInput('12,345.67'), isTrue);
+      expect(isValidMoneyInput('12,34.67'), isFalse);
+      expect(isValidMoneyInput('10.999'), isFalse);
+    });
+  });
+
 }
