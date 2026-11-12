@@ -6,7 +6,7 @@ if ! command -v flutter >/dev/null 2>&1; then
   exit 1
 fi
 
-flutter create --project-name calru --platforms=android,ios,linux,macos,windows .
+flutter create --org com.calru --project-name calru --platforms=android,ios,linux,macos,windows .
 
 # Keep the repository's own tests instead of the generated starter test.
 if [ ! -f test/widget_test.dart ]; then
