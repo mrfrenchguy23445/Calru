@@ -341,13 +341,13 @@ class _HomePageState extends State<HomePage> {
         ];
         return values.asMap().entries.map((cell) {
           final raw = cell.value.toString();
-          final safe = cell.key == 0 && RegExp(r'^[\\s]*[=+\\-@]').hasMatch(raw)
+          final safe = cell.key == 0 && RegExp(r'^[\s]*[=+\-@]').hasMatch(raw)
               ? "'$raw"
               : raw;
-          return '"${safe.replaceAll('"', '""')}"';
+          return '"' + safe.replaceAll('"', '""') + '"';
         }).join(',');
       }),
-    ].join('\\n');
+    ].join('\n');
     final content = csv
         ? csvContent
         : const JsonEncoder.withIndent('  ').convert({
