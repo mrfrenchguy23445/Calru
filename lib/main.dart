@@ -285,7 +285,11 @@ class _HomePageState extends State<HomePage> {
                   entry.netProfit,
                   entry.margin,
                   entry.createdAt.toIso8601String(),
-                ].map((value) => '"${value.toString().replaceAll('"', '""')}"').join(',')),
+                ].map((value) {
+                  final raw = value.toString();
+                  final safe = RegExp(r'^[=+@-]').hasMatch(raw) ? "'$raw" : raw;
+                  return '"${safe.replaceAll('"', '""')}"';
+                }).join(',')),
           ].join('\n')
         : const JsonEncoder.withIndent('  ').convert({
             'format': 'calru-backup',
@@ -330,6 +334,9 @@ class _HomePageState extends State<HomePage> {
           if (!isValidMoneyInput(record[key]?.toString() ?? '0')) {
             throw FormatException('Invalid $key value in backup.');
           }
+        }
+        if (DateTime.tryParse(record['createdAt']?.toString() ?? '') == null) {
+          throw const FormatException('A record has an invalid creation date.');
         }
         return Entry.fromJson(record);
       }).toList();
@@ -749,7 +756,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 
   Future<void> importImage() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result.isEmpty || result.single.path == null) return;
+    if (!mounted || result.isEmpty || result.single.path == null) return;
     setState(() { imagePath = result.single.path; status = 'Image loaded. Starting text recognition…'; extractedText = ''; extractedTextController.clear(); });
     await recognize();
   }
@@ -769,6 +776,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
         if (result.exitCode != 0) throw Exception(result.stderr.toString().trim().isEmpty ? 'Tesseract OCR failed.' : result.stderr.toString());
         text = result.stdout.toString();
       }
+      if (!mounted) return;
       setState(() {
         extractedText = text;
         extractedTextController.text = text;
