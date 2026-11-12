@@ -24,12 +24,12 @@ rules = """# ML Kit references optional recognizer modules for scripts that Calr
 
 gradle = gradle_file.read_text(encoding="utf-8")
 if "proguard-rules.pro" not in gradle:
-    pattern = re.compile(r"(buildTypes\\s*\\{\\s*release\\s*\\{)", re.MULTILINE)
+    pattern = re.compile(r"(buildTypes\s*\{\s*release\s*\{)", re.MULTILINE)
     if gradle_file.suffix == ".kts":
         config = 'proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")'
     else:
         config = "proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'"
-    gradle, count = pattern.subn(r"\\1\\n            " + config, gradle, count=1)
+    gradle, count = pattern.subn(r"\1\n            " + config, gradle, count=1)
     if count != 1:
         raise SystemExit("Could not add the ML Kit R8 rules to the Android release build.")
     gradle_file.write_text(gradle, encoding="utf-8")
