@@ -18,7 +18,7 @@ The repository does not contain private signing credentials. The generated packa
 
 Before publishing:
 - **Android:** configure a private release keystore and Gradle signing configuration; never commit the keystore or passwords.
-- **iOS:** configure Apple Developer signing, provisioning profiles, App Store Connect credentials, and a signed archive on macOS.
+- **iOS:** the app targets iOS 15.5 or newer. Configure Apple Developer signing, provisioning profiles, App Store Connect credentials, and a signed archive on macOS.
 - **Windows:** sign the installer/executable with an organization code-signing certificate if distributing broadly.
 - **macOS:** sign with a Developer ID certificate and notarize for Gatekeeper distribution.
 - **Linux:** package for the target distributions and consider signing repository/package metadata.
